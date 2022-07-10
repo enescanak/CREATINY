@@ -56,6 +56,7 @@ void setup() {
   lsm6ds3.calcGyroOffsets(3000);
   filter.begin(SAMPLE_RATE);
   escControl.calib(3000);
+  escControl.arm();
   Setpoint = 0;
   pid.SetTunings(Kp, Ki, Kd);
   pid.SetOutputLimits(-500, 500);
