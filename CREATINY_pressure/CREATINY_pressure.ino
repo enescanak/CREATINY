@@ -32,7 +32,7 @@ LSM6DS3 lsm6ds3(I2C_MODE, 0x6A);
 QMC5883LCompass qmc5883;
 MS5837 ms5837;
 Madgwick filter;
-ESC escControl(24, 23, 22, 21, 20, 19);
+ESC escControl(23, 20, 21, 22, 19, 24);
 QuickPID pid(&Input, &Output, &Setpoint);
 TFLI2C tflI2C;
 SoftwareSerial luna1(6, 7);
@@ -43,6 +43,7 @@ void setup() {
 
   Wire.setSDA(12);
   Wire.setSCL(13);
+  Wire.begin();
 
   luna1.begin(115200);
   luna3.begin(115200);
@@ -78,8 +79,9 @@ void loop() {
   lunaDist3();
   tflI2C.getData(Dist2, TFL_DEF_ADR);
   pres_sensor_values(CONSOLE_OFF);
-  //Serial.print("Dist1: ");
-  //Serial.println(Dist1);
+  // Serial.print("Dist1: ");
+  //Serial.println(Dist2);
+
   Comm();
   MotorDrive(CONSOLE_OFF, FORWARD, FORWARD, FORWARD, FORWARD, FORWARD, FORWARD);
 }
@@ -142,7 +144,7 @@ void MotorDrive(bool console, bool RiseM1Direct, bool RiseM2Direct, bool FrontRi
   int RiseM1, RiseM2, FrontRight, FrontLeft, BackRight, BackLeft;
 
   RiseM1 = valueJoyStick_X_1;
-  RiseM2 = valueJoyStick_X_2;
+  RiseM2 = valueJoyStick_X_1;
   FrontRight = 1500 + (valueJoyStick_X_2 - 1500) - (valueJoyStick_Y_2 - 1500) + (valueJoyStick_Y_1 - 1500);
   FrontLeft = 1500 + (valueJoyStick_X_2 - 1500) + (valueJoyStick_Y_2 - 1500) - (valueJoyStick_Y_1 - 1500);
   BackRight = 1500 + (valueJoyStick_X_2 - 1500) + (valueJoyStick_Y_2 - 1500) - (valueJoyStick_Y_1 - 1500);
@@ -276,7 +278,7 @@ void Comm() {
     }
     valueJoyStick_X_1 = rovDataRx.leftThumbX;
     valueJoyStick_Y_1 = rovDataRx.leftThumbY;
-    valueJoyStick_X_2 = rovDataRxr.ightThumbX;
+    valueJoyStick_X_2 = rovDataRx.rightThumbX;
     valueJoyStick_Y_2 = rovDataRx.rightThumbY;
   }
 }
