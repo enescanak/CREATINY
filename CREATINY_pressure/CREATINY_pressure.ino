@@ -11,10 +11,11 @@
 #include <MadgwickAHRS.h>
 #include "MS5837.h"
 #include "QuickPID.h"
-#include "esc.h"
+//#include "esc.h"
 #include <SoftwareSerial.h>
 #include <TFLI2C.h>
 #include "SerialTransfer.h"
+#include "Servo.h"
 
 unsigned long microsPerReading, microsPrevious;
 unsigned long consolePerReading, consoleMilisPrevious, consoleMillisNow;
@@ -23,7 +24,7 @@ float Setpoint, Input, Output;
 float Kp = 2, Ki = 5, Kd = 1;
 float roll, pitch, heading, headingOffset;
 float pressure, temp, depth, altitude;
-int valueJoyStick_X_1, valueJoyStick_Y_1, valueJoyStick_X_2, valueJoyStick_Y_2;
+int valueJoyStick_X_1 = 1500, valueJoyStick_Y_1 = 1500, valueJoyStick_X_2 = 1500, valueJoyStick_Y_2 = 1500;
 int16_t Dist1, Dist2, Dist3;
 
 
@@ -32,7 +33,8 @@ LSM6DS3 lsm6ds3(I2C_MODE, 0x6A);
 QMC5883LCompass qmc5883;
 MS5837 ms5837;
 Madgwick filter;
-ESC escControl(23, 20, 21, 22, 19, 24);
+Servo ESc1, ESc2, ESc3, ESc4, ESc5, ESc6;
+
 QuickPID pid(&Input, &Output, &Setpoint);
 TFLI2C tflI2C;
 SoftwareSerial luna1(6, 7);
@@ -45,6 +47,13 @@ void setup() {
   Wire.setSCL(13);
   Wire.begin();
 
+  ESc1.attach(23, 1000, 2000);
+  ESc2.attach(19, 1000, 2000);
+  ESc3.attach(21, 1000, 2000);
+  ESc4.attach(22, 1000, 2000);
+  ESc5.attach(20, 1000, 2000);
+  ESc6.attach(24, 1000, 2000);
+
   luna1.begin(115200);
   luna3.begin(115200);
 
@@ -55,8 +64,8 @@ void setup() {
   qmc5883.init();
   lsm6ds3.calcGyroOffsets(3000);
   filter.begin(SAMPLE_RATE);
-  escControl.calib(3000);
-  escControl.arm();
+  armESC(3200);
+
   Setpoint = 0;
   pid.SetTunings(Kp, Ki, Kd);
   pid.SetOutputLimits(-500, 500);
@@ -144,14 +153,12 @@ void IMUSensorValue(bool console, bool filterWithMag) {
 void MotorDrive(bool console, bool RiseM1Direct, bool RiseM2Direct, bool FrontRightDirect, bool FrontLeftDirect, bool BackRightDirect, bool BackLeftDirect) {
   int RiseM1, RiseM2, FrontRight, FrontLeft, BackRight, BackLeft;
 
-  RiseM1 = valueJoyStick_X_1;
-  RiseM2 = valueJoyStick_X_1;
-  FrontRight = 1500 + (valueJoyStick_X_2 - 1500) - (valueJoyStick_Y_2 - 1500) + (valueJoyStick_Y_1 - 1500);
-  FrontLeft = 1500 + (valueJoyStick_X_2 - 1500) + (valueJoyStick_Y_2 - 1500) - (valueJoyStick_Y_1 - 1500);
+  RiseM1 = valueJoyStick_X_1;  // sol orta
+  RiseM2 = valueJoyStick_X_1;  // sag orta
+  FrontRight = 1500 + (valueJoyStick_X_2 - 1500) - (valueJoyStick_Y_2 - 1500) - (valueJoyStick_Y_1 - 1500);
+  FrontLeft = 1500 + (valueJoyStick_X_2 - 1500) + (valueJoyStick_Y_2 - 1500) + (valueJoyStick_Y_1 - 1500);
   BackRight = 1500 + (valueJoyStick_X_2 - 1500) + (valueJoyStick_Y_2 - 1500) - (valueJoyStick_Y_1 - 1500);
   BackLeft = 1500 + (valueJoyStick_X_2 - 1500) - (valueJoyStick_Y_2 - 1500) + (valueJoyStick_Y_1 - 1500);
-
-  escControl.escspeed(RiseM1, RiseM2, FrontRight, FrontLeft, BackRight, BackLeft);
 
   if (RiseM1Direct) RiseM1 -= 3000;
   if (RiseM2Direct) RiseM2 -= 3000;
@@ -159,6 +166,20 @@ void MotorDrive(bool console, bool RiseM1Direct, bool RiseM2Direct, bool FrontRi
   if (FrontLeftDirect) FrontLeft -= 3000;
   if (BackRightDirect) BackRight -= 3000;
   if (BackLeftDirect) BackLeft -= 3000;
+
+  constrain(RiseM1, 1000, 2000);
+  constrain(RiseM2, 1000, 2000);
+  constrain(FrontRight, 1000, 2000);
+  constrain(FrontLeft, 1000, 2000);
+  constrain(BackRight, 1000, 2000);
+  constrain(BackLeft, 1000, 2000);
+
+  ESc1.writeMicroseconds(RiseM1);
+  ESc2.writeMicroseconds(RiseM2);
+  ESc3.writeMicroseconds(FrontRight);
+  ESc4.writeMicroseconds(FrontLeft);
+  ESc5.writeMicroseconds(BackRight);
+  ESc6.writeMicroseconds(BackLeft);
 
   if (console) {
     consoleMillisNow = millis();
@@ -275,43 +296,54 @@ void Comm() {
 
       myTransfer.sendData(sendSize);
       commMilisPrevious = commMilisPrevious + commPerReading;
-      //delay(50);
     }
-    valueJoyStick_X_1 = rovDataRx.leftThumbX;
-    valueJoyStick_Y_1 = rovDataRx.leftThumbY;
-    valueJoyStick_X_2 = rovDataRx.rightThumbX;
-    valueJoyStick_Y_2 = rovDataRx.rightThumbY;
-  }
+    valueJoyStick_X_2 = rovDataRx.leftThumbX;
+    valueJoyStick_X_1 = rovDataRx.leftThumbY;
+    valueJoyStick_Y_2 = rovDataRx.rightThumbX;
+    valueJoyStick_Y_1 = rovDataRx.rightThumbY;
+  } 
 }
 
-void pres_sensor_values(bool console) {
+  void pres_sensor_values(bool console) {
 
-  ms5837.read();
-  pressure = ms5837.pressure();
-  temp = ms5837.temperature();
-  depth = ms5837.depth();
-  altitude = ms5837.altitude();
-  if (console) {
-    consoleMillisNow = millis();
-    if (consoleMillisNow - consoleMilisPrevious >= consolePerReading) {
+    ms5837.read();
+    pressure = ms5837.pressure();
+    temp = ms5837.temperature();
+    depth = ms5837.depth();
+    altitude = ms5837.altitude();
+    if (console) {
+      consoleMillisNow = millis();
+      if (consoleMillisNow - consoleMilisPrevious >= consolePerReading) {
 
-      Serial.print("Pressure: ");
-      Serial.print(pressure);
-      Serial.println(" mbar");
+        Serial.print("Pressure: ");
+        Serial.print(pressure);
+        Serial.println(" mbar");
 
-      Serial.print("Temperature: ");
-      Serial.print(temp);
-      Serial.println(" deg C");
+        Serial.print("Temperature: ");
+        Serial.print(temp);
+        Serial.println(" deg C");
 
-      Serial.print("Depth: ");
-      Serial.print(depth);
-      Serial.println(" m");
+        Serial.print("Depth: ");
+        Serial.print(depth);
+        Serial.println(" m");
 
-      Serial.print("Altitude: ");
-      Serial.print(altitude);
+        Serial.print("Altitude: ");
+        Serial.print(altitude);
 
 
-      consoleMilisPrevious = consoleMilisPrevious + consolePerReading;
+        consoleMilisPrevious = consoleMilisPrevious + consolePerReading;
+      }
     }
   }
-}
+
+  void armESC(int delayESC) {
+
+    ESc1.writeMicroseconds(1500);
+    ESc2.writeMicroseconds(1500);
+    ESc3.writeMicroseconds(1500);
+    ESc4.writeMicroseconds(1500);
+    ESc5.writeMicroseconds(1500);
+    ESc6.writeMicroseconds(1500);
+
+    delay(delayESC);
+  }
