@@ -28,7 +28,6 @@ int valueJoyStick_X_1 = 1500, valueJoyStick_Y_1 = 1500, valueJoyStick_X_2 = 1500
 int16_t Dist1, Dist2, Dist3;
 
 
-
 LSM6DS3 lsm6ds3(I2C_MODE, 0x6A);
 QMC5883LCompass qmc5883;
 MS5837 ms5837;
@@ -49,10 +48,10 @@ void setup() {
 
   ESc1.attach(23, 1000, 2000);
   ESc2.attach(19, 1000, 2000);
-  ESc3.attach(21, 1000, 2000);
-  ESc4.attach(22, 1000, 2000);
-  ESc5.attach(20, 1000, 2000);
-  ESc6.attach(24, 1000, 2000);
+  ESc3.attach(20, 1000, 2000);
+  ESc4.attach(24, 1000, 2000);
+  ESc5.attach(21, 1000, 2000);
+  ESc6.attach(22, 1000, 2000);
 
   luna1.begin(115200);
   luna3.begin(115200);
@@ -92,8 +91,9 @@ void loop() {
   // Serial.print("Dist1: ");
   //Serial.println(Dist2);
 
-  Comm();
+  //Comm();
   MotorDrive(CONSOLE_OFF, FORWARD, FORWARD, FORWARD, FORWARD, FORWARD, FORWARD);
+  //int RiseM1, RiseM2, FrontRight, FrontLeft, BackRight, BackLeft;
 }
 
 void IMUSensorValue(bool console, bool filterWithMag) {
@@ -156,9 +156,9 @@ void MotorDrive(bool console, bool RiseM1Direct, bool RiseM2Direct, bool FrontRi
   RiseM1 = valueJoyStick_X_1;  // sol orta
   RiseM2 = valueJoyStick_X_1;  // sag orta
   FrontRight = 1500 + (valueJoyStick_X_2 - 1500) - (valueJoyStick_Y_2 - 1500) - (valueJoyStick_Y_1 - 1500);
-  FrontLeft = 1500 + (valueJoyStick_X_2 - 1500) + (valueJoyStick_Y_2 - 1500) + (valueJoyStick_Y_1 - 1500);
+  FrontLeft = 1500 - (valueJoyStick_X_2 - 1500) - (valueJoyStick_Y_2 - 1500) - (valueJoyStick_Y_1 - 1500);
   BackRight = 1500 + (valueJoyStick_X_2 - 1500) + (valueJoyStick_Y_2 - 1500) - (valueJoyStick_Y_1 - 1500);
-  BackLeft = 1500 + (valueJoyStick_X_2 - 1500) - (valueJoyStick_Y_2 - 1500) + (valueJoyStick_Y_1 - 1500);
+  BackLeft = 1500 - (valueJoyStick_X_2 - 1500) + (valueJoyStick_Y_2 - 1500) - (valueJoyStick_Y_1 - 1500);
 
   if (RiseM1Direct) RiseM1 -= 3000;
   if (RiseM2Direct) RiseM2 -= 3000;
