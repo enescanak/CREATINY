@@ -88,12 +88,10 @@ void loop() {
   lunaDist3();
   tflI2C.getData(Dist2, TFL_DEF_ADR);
   pres_sensor_values(CONSOLE_OFF);
-  // Serial.print("Dist1: ");
-  //Serial.println(Dist2);
+
 
   //Comm();
-  MotorDrive(CONSOLE_OFF, FORWARD, FORWARD, FORWARD, FORWARD, FORWARD, FORWARD);
-  //int RiseM1, RiseM2, FrontRight, FrontLeft, BackRight, BackLeft;
+  //MotorDrive(CONSOLE_OFF, FORWARD, FORWARD, FORWARD, FORWARD, FORWARD, FORWARD);
 }
 
 void IMUSensorValue(bool console, bool filterWithMag) {
