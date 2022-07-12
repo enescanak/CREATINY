@@ -20,12 +20,14 @@
 unsigned long microsPerReading, microsPrevious;
 unsigned long consolePerReading, consoleMilisPrevious, consoleMillisNow;
 unsigned long commPerReading, commMilisPrevious, commMillisNow;
-float Setpoint, Input, Output;
-float Kp = 2, Ki = 5, Kd = 1;
+unsigned long IMUMillisNow;
+float SetpointHeading = 0, InputHeading = 0, OutputHeading = 0;
+float Kp = 1, Ki = 0, Kd = 0;
 float roll, pitch, heading, headingOffset;
 float pressure, temp, depth, altitude;
 int valueJoyStick_X_1 = 1500, valueJoyStick_Y_1 = 1500, valueJoyStick_X_2 = 1500, valueJoyStick_Y_2 = 1500;
 int16_t Dist1, Dist2, Dist3;
+bool IMUflag = false;
 
 
 LSM6DS3 lsm6ds3(I2C_MODE, 0x6A);
@@ -34,7 +36,7 @@ MS5837 ms5837;
 Madgwick filter;
 Servo ESc1, ESc2, ESc3, ESc4, ESc5, ESc6;
 
-QuickPID pid(&Input, &Output, &Setpoint);
+QuickPID pid(&InputHeading, &OutputHeading, &SetpointHeading);
 TFLI2C tflI2C;
 SoftwareSerial luna1(6, 7);
 SoftwareSerial luna3(4, 5);
@@ -65,7 +67,9 @@ void setup() {
   filter.begin(SAMPLE_RATE);
   armESC(3200);
 
-  Setpoint = 0;
+  pinMode(25,OUTPUT);
+
+  SetpointHeading = 0;
   pid.SetTunings(Kp, Ki, Kd);
   pid.SetOutputLimits(-500, 500);
   pid.SetMode(pid.Control::automatic);
@@ -83,11 +87,12 @@ void setup() {
 
 void loop() {
 
-  IMUSensorValue(CONSOLE_OFF, true);
+  IMUSensorValue(CONSOLE_ON, false);
   lunaDist1();
   lunaDist3();
   tflI2C.getData(Dist2, TFL_DEF_ADR);
   pres_sensor_values(CONSOLE_OFF);
+  pid.Compute();
 
 
   //Comm();
@@ -117,7 +122,20 @@ void IMUSensorValue(bool console, bool filterWithMag) {
     roll = filter.getRoll();
     pitch = filter.getPitch();
     heading = filter.getYaw();
-
+    
+    IMUMillisNow = millis();
+    if(IMUMillisNow >= 10000 && IMUflag == false){
+    headingOffset = heading;
+    IMUflag = true;
+    }
+    if(IMUflag){
+    digitalWrite(25,HIGH);
+    InputHeading = heading - headingOffset;
+    //Serial.print("InputHeading: ");
+    //Serial.print(InputHeading);
+    }
+    //Serial.print(" OutputHeading: ");
+    //Serial.println((int)OutputHeading);
     microsPrevious = microsPrevious + microsPerReading;
   }
   if (console) {
@@ -135,13 +153,13 @@ void IMUSensorValue(bool console, bool filterWithMag) {
       Serial.print(" gyroY: ");
       Serial.print(gy);
       Serial.print(" gyroZ: ");
-      Serial.print(gz);
-      Serial.print(" magX: ");
-      Serial.print(mx);
-      Serial.print(" magY: ");
-      Serial.print(my);
-      Serial.print(" magZ: ");
-      Serial.println(mz);
+      Serial.println(gz);
+      //Serial.print(" magX: ");
+      //Serial.print(mx);
+      //Serial.print(" magY: ");
+      //Serial.print(my);
+      //Serial.print(" magZ: ");
+      //Serial.println(mz);
 
       consoleMilisPrevious = consoleMilisPrevious + consolePerReading;
     }
