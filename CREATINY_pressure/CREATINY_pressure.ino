@@ -12,8 +12,6 @@
 #include "MS5837.h"
 #include "QuickPID.h"
 //#include "esc.h"
-#include <SoftwareSerial.h>
-#include <TFLI2C.h>
 #include "SerialTransfer.h"
 #include "Servo.h"
 
@@ -37,9 +35,7 @@ Madgwick filter;
 Servo ESc1, ESc2, ESc3, ESc4, ESc5, ESc6;
 
 QuickPID pid(&InputHeading, &OutputHeading, &SetpointHeading);
-TFLI2C tflI2C;
-SoftwareSerial luna1(6, 7);
-SoftwareSerial luna3(4, 5);
+
 SerialTransfer myTransfer;
 
 void setup() {
@@ -55,8 +51,6 @@ void setup() {
   ESc5.attach(21, 1000, 2000);
   ESc6.attach(22, 1000, 2000);
 
-  luna1.begin(115200);
-  luna3.begin(115200);
 
   Serial.begin(115200);
   myTransfer.begin(Serial);
@@ -87,15 +81,12 @@ void setup() {
 
 void loop() {
 
-  IMUSensorValue(CONSOLE_ON, false);
-  lunaDist1();
-  lunaDist3();
-  tflI2C.getData(Dist2, TFL_DEF_ADR);
-  pres_sensor_values(CONSOLE_OFF);
-  pid.Compute();
+  IMUSensorValue(CONSOLE_OFF, false);
+ 
+//  pid.Compute();
 
 
-  //Comm();
+  Comm();
   //MotorDrive(CONSOLE_OFF, FORWARD, FORWARD, FORWARD, FORWARD, FORWARD, FORWARD);
 }
 
@@ -219,86 +210,44 @@ void MotorDrive(bool console, bool RiseM1Direct, bool RiseM2Direct, bool FrontRi
   }
 }
 
-void lunaDist1() {
-
-  int uart[9];
-  int check;
-
-  if (luna1.available()) {       //check if serial port has data input
-    if (luna1.read() == 0x59) {  //assess data package frame header 0x59
-      uart[0] = 0x59;
-      if (luna1.read() == 0x59) {  //assess data package frame header 0x59
-        uart[1] = 0x59;
-        for (int i = 2; i < 9; i++) {  //save data in array
-          uart[i] = luna1.read();
-        }
-        check = uart[0] + uart[1] + uart[2] + uart[3] + uart[4] + uart[5] + uart[6] + uart[7];
-        if (uart[8] == (check & 0xff)) {    //verify the received data as per protocol
-          Dist1 = uart[2] + uart[3] * 256;  //calculate distance value
-        }
-      }
-    }
-  }
-}
-
-void lunaDist3() {
-
-  int uart[9];
-  int check;
-
-  if (luna3.available()) {       //check if serial port has data input
-    if (luna3.read() == 0x59) {  //assess data package frame header 0x59
-      uart[0] = 0x59;
-      if (luna3.read() == 0x59) {  //assess data package frame header 0x59
-        uart[1] = 0x59;
-        for (int i = 2; i < 9; i++) {  //save data in array
-          uart[i] = luna3.read();
-        }
-        check = uart[0] + uart[1] + uart[2] + uart[3] + uart[4] + uart[5] + uart[6] + uart[7];
-        if (uart[8] == (check & 0xff)) {    //verify the received data as per protocol
-          Dist3 = uart[2] + uart[3] * 256;  //calculate distance value
-        }
-      }
-    }
-  }
-}
 
 void Comm() {
   struct STRUCT {
-    int32_t RollS = 0;
-    int32_t PitchS = 0;
-    int32_t HeadingS = 0;
-    int32_t frontLidarS = 0;
-    int32_t leftLidarS = 0;
-    int32_t rightLidarS = 0;
-    int32_t altitudeS = 0;
-    int32_t data1S = 0;
-    int32_t data2S = 0;
-    int32_t data3S = 0;
-    int32_t data4S = 0;
-    int32_t data5S = 0;
-  } rovDataTx;
+    int32_t accX = 0;
+    int32_t accY = 0;
+    int32_t accZ = 0;
+    int32_t gyroX = 0;
+    int32_t gyroY = 0;
+    int32_t gyroZ = 0;
+    int32_t pressure = 0;
+    int32_t batteryVoltage = 0;
+    int32_t batteryAmp = 0;
+    int32_t waterTemp = 0;
+    int32_t internalTemp = 0;
+   } rovDataTx;
 
   struct STRUCT1 {
+    int32_t button;
+    int32_t leftTrigger;
+    int32_t rightTrigger;
     int32_t leftThumbX;
     int32_t leftThumbY;
     int32_t rightThumbX;
     int32_t rightThumbY;
-    int32_t degree;
   } rovDataRx;
 
-  rovDataTx.RollS = int(roll);
-  rovDataTx.PitchS = int(pitch);
-  rovDataTx.HeadingS = int(heading);
-  rovDataTx.frontLidarS = Dist3;
-  rovDataTx.leftLidarS = Dist2;
-  rovDataTx.rightLidarS = Dist1;
-  rovDataTx.altitudeS = int(altitude);
-  rovDataTx.data1S = valueJoyStick_X_1;
-  rovDataTx.data2S = 0;
-  rovDataTx.data3S = 0;
-  rovDataTx.data4S = 0;
-  rovDataTx.data5S = 0;
+  rovDataTx.accX = 0;
+  rovDataTx.accY = 0;
+  rovDataTx.accZ = 0; 
+  rovDataTx.gyroX = int(pitch);
+  rovDataTx.gyroY = int(roll);
+  rovDataTx.gyroZ = int(heading);
+  rovDataTx.pressure = 0;
+  rovDataTx.batteryVoltage = 0;
+  rovDataTx.batteryAmp = 0;
+  rovDataTx.waterTemp = 0;
+  rovDataTx.internalTemp = 0;
+   
 
   if (myTransfer.available()) {
     commMillisNow = millis();
